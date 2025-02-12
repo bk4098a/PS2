@@ -90,6 +90,9 @@ letter_counts <- wordle %>%
   gather(position, letter, let1:let5) %>% 
   count(letter, sort = TRUE)
 
+# Rename columns to "Letter" and "Frequency"
+colnames(letter_counts) <- c("Letter", "Frequency")
+
 # Display letter frequencies
 kable(letter_counts)
 ```
