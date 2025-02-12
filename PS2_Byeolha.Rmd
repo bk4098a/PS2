@@ -1,0 +1,141 @@
+---
+title: "Problem Set 2"
+author: "Byeolha Kim"
+date: "2025-02-12"
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+
+## Reverse-engineer a table.
+
+1. Using the dataset, recreate Table 1 of the Pickering and Davis article to the best of your ability. The numbers will not match exactly because you have different data. However, the table must have the same shape and include the same columns. Note that you may use the abbreviated country/module combo in place of the country names.
+```{r}
+library(tidyverse)
+library(dplyr)
+
+load("C:/Users/Byeolha Kim/OneDrive - american.edu/SIS-750-004/PS2-main/ssa_water.Rdata")
+
+# Compute statistics for each country
+table1 <- water %>%
+  group_by(countryModule) %>%
+  summarise(
+    N = n(),  # Number of observations (households)
+    Year = paste(unique(interviewYear), collapse = ", "),  # Year(s) of survey
+    Mean_Walk_Time = mean(waterTimeMins, na.rm = TRUE),
+    SD_Walk_Time = sd(waterTimeMins, na.rm = TRUE),
+    Median_Walk_Time = median(waterTimeMins, na.rm = TRUE),
+    Percent_On_Plot = mean(waterTimeMins == 0, na.rm = TRUE) * 100  # % of HH with water on premises
+  ) %>%
+  arrange(Year)  # Sort by year
+
+# Compute total row (overall statistics)
+total_row <- water %>%
+  summarise(
+    countryModule = "Total",
+    N = n(),
+    Year = "All Years",
+    Mean_Walk_Time = mean(waterTimeMins, na.rm = TRUE),
+    SD_Walk_Time = sd(waterTimeMins, na.rm = TRUE),
+    Median_Walk_Time = median(waterTimeMins, na.rm = TRUE),
+    Percent_On_Plot = mean(waterTimeMins == 0, na.rm = TRUE) * 100
+  )
+
+# Append total row to the table
+table1 <- bind_rows(table1, total_row)
+
+# Format and display the table
+knitr::kable(table1, caption = "Replication of Table 1 from Pickering & Davis (2012)")
+```
+
+## Pay my respondents
+2. Rather than sending a fully joined, final data frame, please copy and paste the output from a call to `str()` (e.g., `str(finaldat)`). 
+```{r pay-respondents, message=FALSE, warning=FALSE}
+
+exp10 <- read.csv("C:/Users/Byeolha Kim/OneDrive - american.edu/SIS-750-004/PS2-main/exp10.csv")
+exp11 <- read.csv("C:/Users/Byeolha Kim/OneDrive - american.edu/SIS-750-004/PS2-main/exp11.csv")
+CRid <- read.csv("C:/Users/Byeolha Kim/OneDrive - american.edu/SIS-750-004/PS2-main/CRid.csv")
+
+# Combine experimental data
+exp_data <- bind_rows(exp10 %>% select(CompCode, Bonus), 
+                      exp11 %>% select(CompCode, Pay)) %>%
+  mutate(Bonus = coalesce(Bonus, Pay)) %>%
+  select(-Pay)
+
+# Merge with CRid data
+finaldat <- inner_join(CRid, exp_data, by = "CompCode") %>%
+  select(AssignmentID, rID, CompCode, Bonus)
+
+# Output structure
+str(finaldat)
+```
+## Winning Wordle
+3. Start by identifying the most common letters. Present a table (in descending order) of letters and their frequency of appearance in the dictionary. Hint: this isn't tidy data, and you'll have to tidy it first.
+```{r wordle-analysis, message=FALSE, warning=FALSE}
+# Load Wordle Dictionary
+load("C:/Users/Byeolha Kim/OneDrive - american.edu/SIS-750-004/PS2-main/WordleDictionary.Rdata")
+
+library(dplyr)
+library(tidyr)
+library(knitr)
+
+# Count letter frequencies
+letter_counts <- wordle %>%
+  gather(position, letter, let1:let5) %>% 
+  count(letter, sort = TRUE)
+
+# Display letter frequencies
+kable(letter_counts)
+```
+
+
+4. Use the frequencies you just calculated to score each word (e.g., if "a" appears 10,000 times and "b" 450 times, then "babba" gets a score of 21,350). Report the highest and lowest scoring words and their scores.
+```{r message=FALSE, warning=FALSE}
+# Ensure letter_counts exists
+if (!exists("letter_counts")) {
+  letter_counts <- wordle %>%
+    gather(position, letter, let1:let5) %>%
+    count(letter, sort = TRUE)
+}
+
+# Compute word scores
+word_scores <- wordle %>%
+  rowwise() %>%
+  mutate(score = sum(letter_counts$n[match(c(let1, let2, let3, let4, let5), letter_counts$letter)], na.rm = TRUE))
+
+# Find the highest and lowest scoring words
+highest <- word_scores %>% arrange(desc(score)) %>% head(1)
+lowest <- word_scores %>% arrange(score) %>% head(1)
+
+# Display highest and lowest scoring words
+kable(rbind(highest, lowest))
+```
+
+5. Presumably I don't want to use words with duplicate letters. Among those with no duplicates, what are the best/worst opening words according to our standard?
+```{r message=FALSE, warning=FALSE}
+# Display highest and lowest scoring words
+table_scores <- kable(rbind(highest, lowest))
+
+# Find best and worst words with no duplicate letters
+no_dups <- word_scores %>% filter(!dups)
+best_no_dup <- no_dups %>% arrange(desc(score)) %>% head(1)
+worst_no_dup <- no_dups %>% arrange(score) %>% head(1)
+
+# Display best and worst words with no duplicates
+kable(rbind(best_no_dup, worst_no_dup))
+```
+
+## Appendix: Replication Code
+
+```{undefined message=FALSE, warning=FALSE}
+# Appendix: Replication code
+
+```{r ref.label=knitr::all_labels(), echo=TRUE, eval=FALSE}
+```
+````
